@@ -1,0 +1,12 @@
+---
+title: "Clustering"
+author: "Eoin Flynn"
+date: "26 March 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
