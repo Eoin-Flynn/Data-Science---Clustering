@@ -3,10 +3,143 @@ title: "Clustering"
 author: "Eoin Flynn"
 date: "26 March 2018"
 output: pdf_document
+header-includes:
+- \usepackage{pdflscape}
+- \newcommand{\blandscape}{\begin{landscape}}
+- \newcommand{\elandscape}{\end{landscape}}
+
 ---
 
+\centering
+Bond University\linebreak
+Data Science\linebreak
+Final Assignment
+
+
+\raggedright
+\clearpage
+\tableofcontents
+\clearpage
+
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+dataScienceReport = F
+knitr::opts_chunk$set(echo = dataScienceReport, tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+#Introduction
+In this report we will using an unsupervised machine learning technique called clustering to identify groups of customers within our dataset. The model will produce a set of clusters and return a "typical customer" for those groupings. A typical customer is the type of person we expect to see in that group, for example a typical customer who uses tech support might be a senior who pays month-to-month. Being able to identify groups of customers will allow you to make more informed decisions when marketing new products or entering new markets. 
+
+
+```{r Functions Text, results='asis', echo=F, include=dataScienceReport}
+cat("#Functions
+    This section will hold all of the functions that will be used throughout this markdown.")
+```
+```{r Functions Code}
+# Change rows to factors
+setRowAsFactor <- function(dataset, columns){
+  for (column in columns){
+    dataset[,column] <- as.factor(dataset[,column])
+  }
+  return(dataset)
+}
+
+# Create a new customer for predicition. Returns a dataframe
+createCustomer <- function(originalDataset, gender, SeniorCitizen, Partner, Dependents, tenure, PhoneService, MultipleLines, InternetService, OnlineSecurity,
+                           OnlineBackup, DeviceProtection, TechSupport, StreamingTV, StreamingMovies, Contract, PaperlessBilling, PaymentMethod, MontlyCharges,
+                           TotalCharges, Churn){
+  # Create a copy of the original dataset and keep one row that will be overridden with the new data.
+  newCustomer <- customerDataset[1,]
+  
+  newCustomer$gender <- gender
+  newCustomer$SeniorCitizen <- SeniorCitizen
+  newCustomer$Partner<- Partner
+  newCustomer$Dependents <- Dependents
+  newCustomer$tenure <- tenure
+  newCustomer$PhoneService <- PhoneService
+  newCustomer$MultipleLines <- MultipleLines
+  newCustomer$InternetService <- InternetService
+  newCustomer$OnlineSecurity <- OnlineSecurity
+  newCustomer$OnlineBackup <- OnlineBackup
+  newCustomer$DeviceProtection <- DeviceProtection
+  newCustomer$TechSupport <- TechSupport
+  newCustomer$StreamingTV <- StreamingTV
+  newCustomer$StreamingMovies <- StreamingMovies
+  newCustomer$Contract <- Contract
+  newCustomer$PaperlessBilling <- PaperlessBilling
+  newCustomer$PaymentMethod <- PaymentMethod
+  newCustomer$MonthlyCharges <- MontlyCharges
+  newCustomer$TotalCharges <- TotalCharges
+  newCustomer$Churn <- Churn
+  
+  # Convert fields that are factors
+  newCustomer <- setRowAsFactor(newCustomer, c("gender", "SeniorCitizen", "Partner", "Dependents", "PhoneService",
+                                                     "MultipleLines", "InternetService", "OnlineSecurity", "OnlineBackup",
+                                                     "DeviceProtection","TechSupport", "StreamingTV", "StreamingMovies",
+                                                     "Contract", "PaperlessBilling", "PaymentMethod", "Churn"
+                                                     ))
+  
+  return(newCustomer)
+}
+
+# Gets a dataframe from a locally hosted MySQL server. Returns a dataframe
+loadDataframeFromMySQL <- function(user, password, host = "localhost", dbname, statement, port = 3306){
+  suppressMessages(library(RMySQL))
+  
+  # Connect to the server
+  dataBase <- dbConnect(MySQL(), user = user, password = password, host = host, dbname = dbname, port = port)
+  # Retrieve the info the from the specified server
+  dataframe <- dbGetQuery(dataBase, statement = statement)
+  # Close the connection to the server
+  dbDisconnect(dataBase)
+  
+  return(dataframe)
+  
+}
+
 ```
 
 
+```{r Load Data Text, results='asis', echo=F, include=dataScienceReport}
+cat("#Data
+In this section we will load in our data and do some basic data exploration.")
+```
+```{r Load Data Code, include=dataScienceReport}
+customerDataset <- loadDataframeFromMySQL(user="root", password = "A13337995", 
+                                          dbname = "world", statement = "Select * from world.customerChurn")
+
+# Loop through and change all relevant rows to factors and returns the dataset post modification
+customerDataset <- setRowAsFactor(customerDataset, c("gender", "SeniorCitizen", "Partner", "Dependents", "PhoneService",
+                                                     "MultipleLines", "InternetService", "OnlineSecurity", "OnlineBackup",
+                                                     "DeviceProtection","TechSupport", "StreamingTV", "StreamingMovies",
+                                                     "Contract", "PaperlessBilling", "PaymentMethod", "Churn"
+                                                     ))
+
+# Drop the columns that will not be needed
+customerDataset <- customerDataset[, -which(names(customerDataset) %in% c("customerID"))]
+```
+
+
+```{r Model Text, results='asis', echo=F, include=dataScienceReport}
+cat("#Model  
+To determine the optimal number of clusters we will first create a dendogram view how far we can drill down and then produce a series of models using different values that look reasonable on the dendogram. Picking the right number of clusters is highly subjective and varies by dataset so there is no golden number, so that is why we are creating our series of models and presenting the one to management which has the best insight.")
+```
+```{r Dendogram Text, results='asis', echo=F, include=dataScienceReport}
+cat("##Dendogram    
+To determine the optimal number of clusters we will first create a dendogram view how far we can drill down and then produce a series of models using different values that look reasonable on the dendogram. Picking the right number of clusters is highly subjective and varies by dataset so there is no golden number, so that is why we are creating our series of models and presenting the one to management which has the best insight.")
+```
+```{r Dendogram Code, include=dataScienceReport}
+hierarchicalClustering <- hclust(dist(customerDataset), method = "ave") 
+plot(hierarchicalClustering, hang = -1)
+```
+```{r Dendogram Discussion, results='asis', echo=F, include=dataScienceReport}
+cat("###Dendogram Discussion    
+We can see from the dendogram plot that there are so many groupings that it becomes a blur where we cannot make-out any groupings at all. If we were to create a clustering model which drills down all the way then it would have zero insight for management since it would apply to such a finite grouping of customers, on the flip side, if we use a model with too few customers then the model will lack specificity and thus also provide little to no insight to management. Looking at the dendogram we can see that between six and nine clusters breaks the data down so that it is not too specific, but also not too general")
+```
+
+```{r Cluster Models Text, results='asis', echo=F, include=dataScienceReport}
+cat("##Cluster Models  
+Based off our observations from the dendogram, we will now create a series of models and compare them to analyse which has the greatest insight for managment.
+```
+```{r Cluster Models Code, include=dataScienceReport, cache=TRUE}
+
+```
