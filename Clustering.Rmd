@@ -108,14 +108,23 @@ customerDataset <- loadDataframeFromMySQL(user="root", password = "A13337995",
                                           dbname = "world", statement = "Select * from world.customerChurn")
 
 # Loop through and change all relevant rows to factors and returns the dataset post modification
-customerDataset <- setRowAsFactor(customerDataset, c("gender", "SeniorCitizen", "Partner", "Dependents", "PhoneService",
-                                                     "MultipleLines", "InternetService", "OnlineSecurity", "OnlineBackup",
-                                                     "DeviceProtection","TechSupport", "StreamingTV", "StreamingMovies",
-                                                     "Contract", "PaperlessBilling", "PaymentMethod", "Churn"
-                                                     ))
+#customerDataset <- setRowAsFactor(customerDataset, c("gender", "SeniorCitizen", "Partner", "Dependents", "PhoneService",
+#                                                     "MultipleLines", "InternetService", "OnlineSecurity", "OnlineBackup",
+#                                                     "DeviceProtection","TechSupport", "StreamingTV", "StreamingMovies",
+#                                                     "Contract", "PaperlessBilling", "PaymentMethod", "Churn"
+#                                                     ))
 
 # Drop the columns that will not be needed
-customerDataset <- customerDataset[, -which(names(customerDataset) %in% c("customerID"))]
+customerDataset <- customerDataset[, -which(names(customerDataset) %in% c("customerID", "gender", "SeniorCitizen", "Partner", "Dependents", "PhoneService",
+                                                     "MultipleLines", "InternetService", "OnlineSecurity", "OnlineBackup",
+                                                     "DeviceProtection","TechSupport", "StreamingTV", "StreamingMovies",
+                                                     "Contract", "PaperlessBilling", "PaymentMethod"))]
+
+
+customerDataset$Churn[customerDataset$Churn == "Yes"] <- 1
+customerDataset$Churn[customerDataset$Churn == "No"] <- 0
+
+customerDataset <- customerDataset[complete.cases(customerDataset),]
 ```
 
 
@@ -138,8 +147,13 @@ We can see from the dendogram plot that there are so many groupings that it beco
 
 ```{r Cluster Models Text, results='asis', echo=F, include=dataScienceReport}
 cat("##Cluster Models  
-Based off our observations from the dendogram, we will now create a series of models and compare them to analyse which has the greatest insight for managment.
+Based off our observations from the dendogram, we will now create a series of models and compare them to analyse which has the greatest insight for managment.")
 ```
 ```{r Cluster Models Code, include=dataScienceReport, cache=TRUE}
 
+kc <- kmeans(customerDataset, 10)
+kc$centers
+
+cl3 <- pam(customerDataset, 10)$clustering
+clusplot(customerDataset, kc$cluster, color = TRUE)
 ```
