@@ -22,7 +22,7 @@ Final Assignment
 \clearpage
 
 ```{r setup, include=FALSE}
-dataScienceReport = F
+dataScienceReport = T
 knitr::opts_chunk$set(echo = dataScienceReport, tidy.opts=list(width.cutoff=60),tidy=TRUE)
 ```
 
@@ -115,11 +115,35 @@ customerDataset <- loadDataframeFromMySQL(user="root", password = "A13337995",
 #                                                     ))
 
 # Drop the columns that will not be needed
-customerDataset <- customerDataset[, -which(names(customerDataset) %in% c("customerID", "gender", "SeniorCitizen", "Partner", "Dependents", "PhoneService",
-                                                     "MultipleLines", "InternetService", "OnlineSecurity", "OnlineBackup",
+customerDataset <- customerDataset[, -which(names(customerDataset) %in% c("customerID",
+                                                     "MultipleLines", "OnlineSecurity", "OnlineBackup",
                                                      "DeviceProtection","TechSupport", "StreamingTV", "StreamingMovies",
-                                                     "Contract", "PaperlessBilling", "PaymentMethod"))]
+                                                     "PaymentMethod"))]
 
+customerDataset$gender[customerDataset$gender == "Female"] <- 1
+customerDataset$gender[customerDataset$gender == "Male"] <- 0
+
+customerDataset$Partner[customerDataset$Partner == "Yes"] <- 1
+customerDataset$Partner[customerDataset$Partner == "No"] <- 0
+
+customerDataset$Dependents[customerDataset$Dependents == "Yes"] <- 1
+customerDataset$Dependents[customerDataset$Dependents == "No"] <- 0
+
+customerDataset$PhoneService[customerDataset$PhoneService == "Yes"] <- 1
+customerDataset$PhoneService[customerDataset$PhoneService == "No"] <- 0
+
+customerDataset$PaperlessBilling[customerDataset$PaperlessBilling == "Yes"] <- 1
+customerDataset$PaperlessBilling[customerDataset$PaperlessBilling == "No"] <- 0
+
+# 1 if a customer has internet, 0 if not
+customerDataset$InternetService[customerDataset$InternetService == "Fiber optic"] <- 1
+customerDataset$InternetService[customerDataset$InternetService == "DSL"] <- 1
+customerDataset$InternetService[customerDataset$InternetService == "No"] <- 0
+
+# 1 if a customer is not on a yearly or bi-yearly contract (not locked in)
+customerDataset$Contract[customerDataset$Contract == "Month-to-month"] <- 1
+customerDataset$Contract[customerDataset$Contract == "One year"] <- 0
+customerDataset$Contract[customerDataset$Contract == "Two year"] <- 0
 
 customerDataset$Churn[customerDataset$Churn == "Yes"] <- 1
 customerDataset$Churn[customerDataset$Churn == "No"] <- 0
@@ -132,8 +156,9 @@ customerDataset <- customerDataset[complete.cases(customerDataset),]
 cat("#Model  
 To determine the optimal number of clusters we will first create a dendogram view how far we can drill down and then produce a series of models using different values that look reasonable on the dendogram. Picking the right number of clusters is highly subjective and varies by dataset so there is no golden number, so that is why we are creating our series of models and presenting the one to management which has the best insight.")
 ```
+
 ```{r Dendogram Text, results='asis', echo=F, include=dataScienceReport}
-cat("##Dendogram    
+cat("##Dendogram            
 To determine the optimal number of clusters we will first create a dendogram view how far we can drill down and then produce a series of models using different values that look reasonable on the dendogram. Picking the right number of clusters is highly subjective and varies by dataset so there is no golden number, so that is why we are creating our series of models and presenting the one to management which has the best insight.")
 ```
 ```{r Dendogram Code, include=dataScienceReport}
@@ -141,8 +166,8 @@ hierarchicalClustering <- hclust(dist(customerDataset), method = "ave")
 plot(hierarchicalClustering, hang = -1)
 ```
 ```{r Dendogram Discussion, results='asis', echo=F, include=dataScienceReport}
-cat("###Dendogram Discussion    
-We can see from the dendogram plot that there are so many groupings that it becomes a blur where we cannot make-out any groupings at all. If we were to create a clustering model which drills down all the way then it would have zero insight for management since it would apply to such a finite grouping of customers, on the flip side, if we use a model with too few customers then the model will lack specificity and thus also provide little to no insight to management. Looking at the dendogram we can see that between six and nine clusters breaks the data down so that it is not too specific, but also not too general")
+cat("###Dendogram Discussion                  
+We can see from the dendogram plot that there are so many groupings that it becomes a blur where we cannot make-out any groupings at all. If we were to create a clustering model which drills down all the way then it would have zero insight for management since it would apply to such a finite grouping of customers, on the flip side, if we use a model with too few customers then the model will lack specificity and thus also provide little to no insight to management. Looking at the dendogram we can see that between 14 and 17 clusters breaks the data down so that it is not too specific, but also not too general")
 ```
 
 ```{r Cluster Models Text, results='asis', echo=F, include=dataScienceReport}
@@ -150,10 +175,18 @@ cat("##Cluster Models
 Based off our observations from the dendogram, we will now create a series of models and compare them to analyse which has the greatest insight for managment.")
 ```
 ```{r Cluster Models Code, include=dataScienceReport, cache=TRUE}
+set.seed(12216)
+fourteenClusterModel <- kmeans(customerDataset, 14)
+fiveClusterModel <- kmeans(customerDataset, 15)
+sixClusterModel <- kmeans(customerDataset, 16)
+sevenClusterModel <- kmeans(customerDataset, 17)
 
-kc <- kmeans(customerDataset, 10)
-kc$centers
-
-cl3 <- pam(customerDataset, 10)$clustering
-clusplot(customerDataset, kc$cluster, color = TRUE)
+fourteenClusterModel$centers
+fiveClusterModel$centers
+sixClusterModel$centers
+sevenClusterModel$centers
+```
+```{r Cluster Models Discussion, results='asis', echo=F, include=dataScienceReport}
+cat("###Cluster Models Discussion          
+We will present the 14 cluster model to managment as it has a number of rows which will be of a great benefit to them for gaining better insight into their customers. If we look at row 14 in particular we can see a clear grouping of customers where very few churn. The group is split almost 50/50 between men and women, with slighlty more men in the group than women. The typical member of this group is very unlikely a senior  but is extremely likely to have a partner. The group is always one of few where the average customer definitely has a phone service and internet service, and this may be the key as to why they are extremely unlikely to churn. Another key may be the fact that they are more likely to be a lock in contract (one or two years) as opposed being on a month to month plan. The recommendations for how this data could be used in a business sense can be found in the management section of the report.")
 ```
