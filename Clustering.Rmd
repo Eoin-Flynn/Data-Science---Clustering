@@ -32,55 +32,9 @@ In this report we will using an unsupervised machine learning technique called c
 
 ```{r Functions Text, results='asis', echo=F, include=dataScienceReport}
 cat("#Functions
-    This section will hold all of the functions that will be used throughout this markdown.")
+This section will hold all of the functions that will be used throughout this markdown.")
 ```
 ```{r Functions Code}
-# Change rows to factors
-setRowAsFactor <- function(dataset, columns){
-  for (column in columns){
-    dataset[,column] <- as.factor(dataset[,column])
-  }
-  return(dataset)
-}
-
-# Create a new customer for predicition. Returns a dataframe
-createCustomer <- function(originalDataset, gender, SeniorCitizen, Partner, Dependents, tenure, PhoneService, MultipleLines, InternetService, OnlineSecurity,
-                           OnlineBackup, DeviceProtection, TechSupport, StreamingTV, StreamingMovies, Contract, PaperlessBilling, PaymentMethod, MontlyCharges,
-                           TotalCharges, Churn){
-  # Create a copy of the original dataset and keep one row that will be overridden with the new data.
-  newCustomer <- customerDataset[1,]
-  
-  newCustomer$gender <- gender
-  newCustomer$SeniorCitizen <- SeniorCitizen
-  newCustomer$Partner<- Partner
-  newCustomer$Dependents <- Dependents
-  newCustomer$tenure <- tenure
-  newCustomer$PhoneService <- PhoneService
-  newCustomer$MultipleLines <- MultipleLines
-  newCustomer$InternetService <- InternetService
-  newCustomer$OnlineSecurity <- OnlineSecurity
-  newCustomer$OnlineBackup <- OnlineBackup
-  newCustomer$DeviceProtection <- DeviceProtection
-  newCustomer$TechSupport <- TechSupport
-  newCustomer$StreamingTV <- StreamingTV
-  newCustomer$StreamingMovies <- StreamingMovies
-  newCustomer$Contract <- Contract
-  newCustomer$PaperlessBilling <- PaperlessBilling
-  newCustomer$PaymentMethod <- PaymentMethod
-  newCustomer$MonthlyCharges <- MontlyCharges
-  newCustomer$TotalCharges <- TotalCharges
-  newCustomer$Churn <- Churn
-  
-  # Convert fields that are factors
-  newCustomer <- setRowAsFactor(newCustomer, c("gender", "SeniorCitizen", "Partner", "Dependents", "PhoneService",
-                                                     "MultipleLines", "InternetService", "OnlineSecurity", "OnlineBackup",
-                                                     "DeviceProtection","TechSupport", "StreamingTV", "StreamingMovies",
-                                                     "Contract", "PaperlessBilling", "PaymentMethod", "Churn"
-                                                     ))
-  
-  return(newCustomer)
-}
-
 # Gets a dataframe from a locally hosted MySQL server. Returns a dataframe
 loadDataframeFromMySQL <- function(user, password, host = "localhost", dbname, statement, port = 3306){
   suppressMessages(library(RMySQL))
@@ -101,24 +55,20 @@ loadDataframeFromMySQL <- function(user, password, host = "localhost", dbname, s
 
 ```{r Load Data Text, results='asis', echo=F, include=dataScienceReport}
 cat("#Data
-In this section we will load in our data and do some basic data exploration.")
+In this section we will load in our data and convert factors to numeric for clustering")
 ```
 ```{r Load Data Code, include=dataScienceReport}
 customerDataset <- loadDataframeFromMySQL(user="root", password = "A13337995", 
                                           dbname = "world", statement = "Select * from world.customerChurn")
 
-# Loop through and change all relevant rows to factors and returns the dataset post modification
-#customerDataset <- setRowAsFactor(customerDataset, c("gender", "SeniorCitizen", "Partner", "Dependents", "PhoneService",
-#                                                     "MultipleLines", "InternetService", "OnlineSecurity", "OnlineBackup",
-#                                                     "DeviceProtection","TechSupport", "StreamingTV", "StreamingMovies",
-#                                                     "Contract", "PaperlessBilling", "PaymentMethod", "Churn"
-#                                                     ))
 
 # Drop the columns that will not be needed
 customerDataset <- customerDataset[, -which(names(customerDataset) %in% c("customerID",
                                                      "MultipleLines", "OnlineSecurity", "OnlineBackup",
                                                      "DeviceProtection","TechSupport", "StreamingTV", "StreamingMovies",
                                                      "PaymentMethod"))]
+
+# Convert factors to numeric. Due to different factors having different levels this could not have been done any faster using a function
 
 customerDataset$gender[customerDataset$gender == "Female"] <- 1
 customerDataset$gender[customerDataset$gender == "Male"] <- 0
@@ -154,25 +104,30 @@ customerDataset <- customerDataset[complete.cases(customerDataset),]
 
 ```{r Model Text, results='asis', echo=F, include=dataScienceReport}
 cat("#Model  
-To determine the optimal number of clusters we will first create a dendogram view how far we can drill down and then produce a series of models using different values that look reasonable on the dendogram. Picking the right number of clusters is highly subjective and varies by dataset so there is no golden number, so that is why we are creating our series of models and presenting the one to management which has the best insight.")
+To determine the optimal number of clusters we will first create a dendrogram view how far we can drill down and then produce a series of models using different values that look reasonable on the dendrogram. Picking the right number of clusters is highly subjective and varies by dataset so there is no golden number, that is why we are creating our series of models and presenting the one to management which has the best insight.
+")
 ```
 
 ```{r Dendogram Text, results='asis', echo=F, include=dataScienceReport}
-cat("##Dendogram            
-To determine the optimal number of clusters we will first create a dendogram view how far we can drill down and then produce a series of models using different values that look reasonable on the dendogram. Picking the right number of clusters is highly subjective and varies by dataset so there is no golden number, so that is why we are creating our series of models and presenting the one to management which has the best insight.")
+cat("##Dendrogram            
+To determine the optimal number of clusters we will first create a dendrogram to view how far we can drill down and then produce a series of models using different values that look reasonable on the dendrogram.
+")
 ```
 ```{r Dendogram Code, include=dataScienceReport}
 hierarchicalClustering <- hclust(dist(customerDataset), method = "ave") 
 plot(hierarchicalClustering, hang = -1)
+
 ```
+
 ```{r Dendogram Discussion, results='asis', echo=F, include=dataScienceReport}
-cat("###Dendogram Discussion                  
-We can see from the dendogram plot that there are so many groupings that it becomes a blur where we cannot make-out any groupings at all. If we were to create a clustering model which drills down all the way then it would have zero insight for management since it would apply to such a finite grouping of customers, on the flip side, if we use a model with too few customers then the model will lack specificity and thus also provide little to no insight to management. Looking at the dendogram we can see that between 14 and 17 clusters breaks the data down so that it is not too specific, but also not too general")
+cat("###Dendrogram Discussion          
+We can see from the dendrogram plot that there are so many groupings that it becomes a blur where we cannot make-out any groupings at all. If we were to create a clustering model which drills down all the way then it would have zero insight for management since it would apply to such a finite grouping of customers, on the flip side, if we use a model with too few customers then the model will lack specificity and thus also provide little to no insight to management. Looking at the dendrogram we can see that between 14 and 17 clusters breaks the data down so that it is not too specific, but also not too general.
+")
 ```
 
 ```{r Cluster Models Text, results='asis', echo=F, include=dataScienceReport}
 cat("##Cluster Models  
-Based off our observations from the dendogram, we will now create a series of models and compare them to analyse which has the greatest insight for managment.")
+Based off our observations from the dendrogram, we will now create a series of models and compare them to analyse which has the greatest insight for management.")
 ```
 ```{r Cluster Models Code, include=dataScienceReport, cache=TRUE}
 set.seed(12216)
@@ -188,5 +143,32 @@ sevenClusterModel$centers
 ```
 ```{r Cluster Models Discussion, results='asis', echo=F, include=dataScienceReport}
 cat("###Cluster Models Discussion          
-We will present the 14 cluster model to managment as it has a number of rows which will be of a great benefit to them for gaining better insight into their customers. If we look at row 14 in particular we can see a clear grouping of customers where very few churn. The group is split almost 50/50 between men and women, with slighlty more men in the group than women. The typical member of this group is very unlikely a senior  but is extremely likely to have a partner. The group is always one of few where the average customer definitely has a phone service and internet service, and this may be the key as to why they are extremely unlikely to churn. Another key may be the fact that they are more likely to be a lock in contract (one or two years) as opposed being on a month to month plan. The recommendations for how this data could be used in a business sense can be found in the management section of the report.")
+We will present the 14 cluster model to management as it has a number of rows which will be of a great benefit to them for gaining better insight into their customers. If we look at row 5 in particular we can see a clear grouping of customers where very few churn. The group is split almost 50/50 between men and women, with slightly more men in the group than women. The typical member of this group is very unlikely to be a senior but is extremely likely to have a partner. The group one of few where the average customer definitely has a phone service and internet service, and this may be the key as to why they are extremely unlikely to churn. Another key may be the fact that they are more likely to be a lock in contract (one or two years) as opposed being on a month to month plan. The recommendations for how this data could be used in a business sense can be found in the management section of the report.")
 ```
+
+#Cluster Model
+After testing a number of different models, we were able to find one which has the greatest amount on insight into your customers without being too specific, or too general. The model we created contains 14 clusters of customers, each with their own unique characteristics. If we focus on group five for example we can find some information that can be used to make more informed management decisions.
+
+```{r Print Cluster, include=TRUE, comment=NA}
+library(knitr)
+suppressMessages(kable(fourteenClusterModel$centers[5,]))
+```
+
+This output shows us what the typical customer looks like in this group. They are very unlikely to churn, they have high-monthly charges, they are most likely on a yearly or bi-yearly contract, they have a phone service and internet service, they have a partner, and are most likely not a senior citizen. From this information we can make many recommendations to the business such as: \linebreak
+
+Recommendations
+
+  + Try to push all customers onto one or two year contracts.
+  + Offer customers on longer term contracts phone services as well as internet services.
+  + Try to have all customers on phone and internet plans.
+  + If someone is a not a senior citizen and does have a partner then offer them a longer term contract.
+  + Gender should not be used to determine the likelihood of a person churning since the typical customer is 48% likely to be female, and 52% likely to be male, meaning that there is no real predictive value in this number.
+
+#Conclusion
+The model that we have created here should be used for identifying groups of customers within the company. Identifying these new groups will allow you to better utilise your marketing and sales budgets, as you will be able to create more specific offers which can be used to entice customers to stay with your network. Using a model with fourteen clusters gives you the ability to identify clusters of customers which are not so specific that they only apply to a minuscule amount of your customers, but also no so general that you gain no real insight. 
+
+
+
+
+
+
